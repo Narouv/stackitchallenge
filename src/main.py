@@ -50,18 +50,26 @@ def construct_embed(message: Message) -> dict:
         ],
     }
 
-def handle_additional_message(index: int):
-    if index > message_storage.count():
-        return None
-    
-
 def construct_payload(notification: Message, additional: int) -> dict:
     base_payload = {
         "content": f"**{notification.name}**\n{notification.description}\n\n**Type:** {notification.type}\n**Time:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
     }
-    if message_storage.count():
-        base_payload["embeds"] = [handle_additional_message(i) for i in range(additional)]
+    send = get_and_remove_last_n_messages(additional)
+    if len(send) > 0:
+        base_payload['embeds'] = [construct_embed(entry.message) for entry in send]
     return base_payload
+
+def get_and_remove_last_n_messages(n: int):
+    if n < 1 or len(message_storage) == 0:
+        return []
+    messages_to_send = []
+
+    for i in range(n):
+        if len(message_storage):
+            messages_to_send.append(message_storage.pop())
+
+    print(f"Retrieved {len(messages_to_send)} messages, {len(message_storage)} remaining in storage")
+    return messages_to_send
 
 def send_to_webhook(notification: Message, additional: int = 0):
     if not webhook_url:
@@ -76,10 +84,10 @@ def send_to_webhook(notification: Message, additional: int = 0):
 
 def save_message(message: Message):
     msg = SavedMessage(message)
-    if message_storage.count() > 10:
+    if len(message_storage) > 10:
         message_storage.pop()
     message_storage.appendleft(msg)
-    print(f"Stored message {msg.message.name}. Current backlog {message_storage.count()}")
+    print(f"Stored message {msg.message.name}. Current backlog {len(message_storage)}")
 
 @app.post("/notify")
 def notify(response: Response, notification: Message, send_saved: int = Query(0, description="Number of saved messages to send along")):
