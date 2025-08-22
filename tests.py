@@ -26,7 +26,7 @@ def test_server_alive():
         return False
 
 def test_warning_notification():
-    """Test sending a Warning notification (should be forwarded)"""
+    """Test sending a Warning notification"""
     print("\n📨 Testing Warning notification...")
     
     payload = {
@@ -59,13 +59,13 @@ def test_warning_notification():
         print(f"❌ Error: {e}")
 
 def test_info_notification():
-    """Test sending an Info notification (should NOT be forwarded)"""
+    """Test sending an Info notification"""
     print("\n📨 Testing Info notification...")
     
     payload = {
         "type": "Info",
         "name": "Test Info Message",
-        "description": "This is a test info notification that should be filtered out"
+        "description": "This is a test warning notification from the test script"
     }
     
     try:
@@ -80,9 +80,42 @@ def test_info_notification():
         print(f"Response: {response.text}")
         
         if response.status_code == 200:
-            print("✅ Info notification processed successfully!")
+            print("✅ Info notification sent successfully!")
         else:
             print(f"⚠️ Unexpected status code: {response.status_code}")
+            
+    except requests.exceptions.Timeout:
+        print("❌ Request timed out!")
+    except requests.exceptions.ConnectionError:
+        print("❌ Connection failed!")
+    except Exception as e:
+        print(f"❌ Error: {e}")
+
+def test_stackit_notification():
+    """Test sending an Info notification"""
+    print("\n📨 Testing Info notification...")
+    
+    payload = {
+        "type": "stackit",
+        "name": "Test Info Message",
+        "description": "This is a test stackit notification from the test script and should be filtered out"
+    }
+    
+    try:
+        response = requests.post(
+            f"{BASE_URL}/notify", 
+            json=payload, 
+            timeout=TIMEOUT,
+            headers={"Content-Type": "application/json"}
+        )
+        
+        print(f"Status Code: {response.status_code}")
+        print(f"Response: {response.text}")
+        
+        if response.status_code == 200 and response.json()["status"] == "filtered":
+            print("✅ Info notification processed successfully!")
+        else:
+            print(f"⚠️ Unexpected: {response.status_code}: {response.text}")
             
     except requests.exceptions.Timeout:
         print("❌ Request timed out!")
@@ -135,7 +168,10 @@ def run_all_tests():
     # Test 3: Info notification  
     test_info_notification()
     
-    # Test 4: Invalid payload
+    # test 4: stackit notification
+    test_stackit_notification()
+
+    # Test 5: Invalid payload
     test_invalid_payload()
     
     print("\n" + "=" * 50)
