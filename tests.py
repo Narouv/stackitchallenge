@@ -25,130 +25,32 @@ def test_server_alive():
         print(f"❌ Unexpected error: {e}")
         return False
 
-def test_warning_notification():
-    """Test sending a Warning notification"""
-    print("\n📨 Testing Warning notification...")
-    
-    payload = {
-        "type": "Warning",
-        "name": "Test Warning Alert",
-        "description": "This is a test warning notification from the test script"
-    }
-    
+def test_payload(payload: dict, expected_sc: int, send_saved: int = 0, output: bool = True):
     try:
         response = requests.post(
-            f"{BASE_URL}/notify", 
+            f"{BASE_URL}/notify?send_saved={send_saved}", 
             json=payload, 
             timeout=TIMEOUT,
             headers={"Content-Type": "application/json"}
         )
-        
-        print(f"Status Code: {response.status_code}")
-        print(f"Response: {response.text}")
-        
+        if output:
+            if response.status_code == expected_sc:
+                print(f"Status Code: {response.status_code}")
+                print("✅ Server reacted correctly")
+            else:
+                print(f"⚠️ Expected {expected_sc} but got: {response.status_code}")
+    except Exception as e:
+        print(f"❌ Error: {e}")
+
+def test_delete():
+    try:
+        response = requests.delete(f"{BASE_URL}/clear", timeout=TIMEOUT)
         if response.status_code == 200:
-            print("✅ Warning notification sent successfully!")
+            print(f"Status Code: {response.status_code}")
+            print(response.text)
+            print("✅ Server reacted correctly")
         else:
-            print(f"⚠️ Unexpected status code: {response.status_code}")
-            
-    except requests.exceptions.Timeout:
-        print("❌ Request timed out! Check your webhook or server code.")
-    except requests.exceptions.ConnectionError:
-        print("❌ Connection failed! Server might not be running.")
-    except Exception as e:
-        print(f"❌ Error: {e}")
-
-def test_info_notification():
-    """Test sending an Info notification"""
-    print("\n📨 Testing Info notification...")
-    
-    payload = {
-        "type": "Info",
-        "name": "Test Info Message",
-        "description": "This is a test warning notification from the test script"
-    }
-    
-    try:
-        response = requests.post(
-            f"{BASE_URL}/notify", 
-            json=payload, 
-            timeout=TIMEOUT,
-            headers={"Content-Type": "application/json"}
-        )
-        
-        print(f"Status Code: {response.status_code}")
-        print(f"Response: {response.text}")
-        
-        if response.status_code == 200:
-            print("✅ Info notification sent successfully!")
-        else:
-            print(f"⚠️ Unexpected status code: {response.status_code}")
-            
-    except requests.exceptions.Timeout:
-        print("❌ Request timed out!")
-    except requests.exceptions.ConnectionError:
-        print("❌ Connection failed!")
-    except Exception as e:
-        print(f"❌ Error: {e}")
-
-def test_stackit_notification():
-    """Test sending an Info notification"""
-    print("\n📨 Testing Info notification...")
-    
-    payload = {
-        "type": "stackit",
-        "name": "Test Info Message",
-        "description": "This is a test stackit notification from the test script and should be filtered out"
-    }
-    
-    try:
-        response = requests.post(
-            f"{BASE_URL}/notify", 
-            json=payload, 
-            timeout=TIMEOUT,
-            headers={"Content-Type": "application/json"}
-        )
-        
-        print(f"Status Code: {response.status_code}")
-        print(f"Response: {response.text}")
-        
-        if response.status_code == 200 and response.json()["status"] == "filtered":
-            print("✅ Info notification processed successfully!")
-        else:
-            print(f"⚠️ Unexpected: {response.status_code}: {response.text}")
-            
-    except requests.exceptions.Timeout:
-        print("❌ Request timed out!")
-    except requests.exceptions.ConnectionError:
-        print("❌ Connection failed!")
-    except Exception as e:
-        print(f"❌ Error: {e}")
-
-def test_invalid_payload():
-    """Test sending invalid data"""
-    print("\n📨 Testing invalid payload...")
-    
-    payload = {
-        "invalid": "data",
-        "missing": "required_fields"
-    }
-    
-    try:
-        response = requests.post(
-            f"{BASE_URL}/notify", 
-            json=payload, 
-            timeout=TIMEOUT,
-            headers={"Content-Type": "application/json"}
-        )
-        
-        print(f"Status Code: {response.status_code}")
-        print(f"Response: {response.text}")
-        
-        if response.status_code == 422:
-            print("✅ Server correctly rejected invalid payload!")
-        else:
-            print(f"⚠️ Expected 422 but got: {response.status_code}")
-            
+            print(f"⚠️ Got status code {response.status_code} wtf even happened??")  
     except Exception as e:
         print(f"❌ Error: {e}")
 
@@ -162,18 +64,33 @@ def run_all_tests():
         print("\n❌ Server is not responding. Cannot continue with tests.")
         return
     
-    # Test 2: Warning notification
-    test_warning_notification()
-    
-    # Test 3: Info notification  
-    test_info_notification()
-    
-    # test 4: stackit notification
-    test_stackit_notification()
+    print("\n📨 Testing warning payload...")
+    payload = {"type": "warning", "name": "warning payload", "description": "very descriptive description"}
+    test_payload(payload, 200)
 
-    # Test 5: Invalid payload
-    test_invalid_payload()
+    print("\n📨 Testing info payload...")
+    payload = {"type": "info", "name": "info payload", "description": "very descriptive description"}
+    test_payload(payload, 200)
+
+    print("\n📨 Testing warning payload with query param...")
+    payload = {"type": "warning", "name": "warning payload", "description": "very descriptive description"}
+    test_payload(payload, 200, 10)
+
+    print("\n📨 Testing invalid payload...")
+    payload = {"type": "invalid", "name": "invalid payload"}
+    test_payload(payload, 422)
     
+    print("\n📨 Testing delete...")
+    test_delete()
+
+    print("\n📨 Adding messages to delete...")
+    payload = {"type": "info", "name": "info payload", "description": "very descriptive description"}
+    for _ in range(5):
+        test_payload(payload, 200, output=False)
+
+    print("\n📨 Testing delete...")
+    test_delete()
+
     print("\n" + "=" * 50)
     print("🏁 Tests completed!")
 

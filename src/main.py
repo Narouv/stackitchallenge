@@ -1,4 +1,3 @@
-from typing import Union
 from datetime import datetime
 from requests import post
 from pydantic import BaseModel
@@ -71,6 +70,13 @@ def get_and_remove_last_n_messages(n: int):
     print(f"Retrieved {len(messages_to_send)} messages, {len(message_storage)} remaining in storage")
     return messages_to_send
 
+def save_message(message: Message):
+    msg = SavedMessage(message)
+    if len(message_storage) >= 10:
+        message_storage.pop()
+    message_storage.appendleft(msg)
+    print(f"Stored message {msg.message.name}. Current backlog {len(message_storage)}")
+
 def send_to_webhook(notification: Message, additional: int = 0):
     if not webhook_url:
         return None
@@ -81,13 +87,6 @@ def send_to_webhook(notification: Message, additional: int = 0):
     except Exception as e:
         print(f"Exception: {e}")
         return None
-
-def save_message(message: Message):
-    msg = SavedMessage(message)
-    if len(message_storage) > 10:
-        message_storage.pop()
-    message_storage.appendleft(msg)
-    print(f"Stored message {msg.message.name}. Current backlog {len(message_storage)}")
 
 @app.post("/notify")
 def notify(response: Response, notification: Message, send_saved: int = Query(0, description="Number of saved messages to send along")):
@@ -108,5 +107,7 @@ def notify(response: Response, notification: Message, send_saved: int = Query(0,
 @app.delete("/clear")
 def clear_messages():
     count = len(message_storage)
+    if count == 0:
+        return {"status": "success", "message": f"no messages to clear"}
     message_storage.clear()
     return {"status": "success", "message": f"cleared all {count} messages from backlog"}
